@@ -63,59 +63,41 @@ class torrent9(TorrentProvider, MovieProvider):
                        
             try:
                 html = BeautifulSoup(data)
-                lin=0
-                erlin=0
-                resultdiv=[]
-                while erlin==0:
-                    try:
-                        classlin='ligne'+str(lin)
-                        resultlin=html.findAll(attrs = {'class' : [classlin]})
-                        if resultlin:
-                            for ele in resultlin:
-                                resultdiv.append(ele)
-                            lin+=1
-                        else:
-                            erlin=1
-                    except:
-                        erlin=1
-                for result in resultdiv:
+                torrent_rows = html.findAll('tr')
+                    for result in torrent_rows:
+                        try:
+                            title = result.find('a').get_text(strip=False)
+                            tmp = result.find("a")['href'].split('/')[-1].replace('.html', '.torrent').strip()
+                            download_url = (self.url + '/get_torrent/{0}'.format(tmp) + ".torrent")
+                            if not all([title, download_url]):
+                                continue
 
-                    try:
-                        
-                        new = {}
-                        name = result.findAll(attrs = {'class' : ["titre"]})[0].text
-                        testname=namer_check.correctName(name,movie)
-                        if testname==0:
-                            continue
-                        detail_url = result.find("a")['href']
-                        tmp = detail_url.split('/')[-1].replace('.html','.torrent')
-                        url_download = ('http://www.cpasbien.cm/telechargement/%s' % tmp)
-                        size = result.findAll(attrs = {'class' : ["poid"]})[0].text.replace('Go', 'Gb').replace('Mo', 'Mb')
-                        seeder = result.findAll(attrs = {'class' : ["seed_ok"]})[0].text
-                        leecher = result.findAll(attrs = {'class' : ["down"]})[0].text
-                        age = '1'
+                            seeders = try_int(result.find(class_="seed_ok").get_text(strip=True))
+                            leechers = try_int(result.find_all('td')[3].get_text(strip=True))
+                            if seeders < self.minseed or leechers < self.minleech:
+                                    logger.log(u"Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format
+                                               (title, seeders, leechers), logger.DEBUG)
+                                continue
 
-                        verify = getTitle(movie['info']).split(' ')
+                            torrent_size = result.find_all('td')[1].get_text(strip=True)
+
+                            units = ['o', 'Ko', 'Mo', 'Go', 'To', 'Po']
+                            size = convert_size(torrent_size, units=units) or -1
                         
                         add = 1
-                        
-                        for verify_unit in verify:
-                            if (name.lower().find(verify_unit.lower()) == -1) :
-                                add = 0
-
                         def extra_check(item):
                             return True
 
                         if add == 1:
 
                             new['id'] = id
-                            new['name'] = name.strip()
-                            new['url'] = url_download
-                            new['detail_url'] = detail_url
-                            new['size'] = self.parseSize(size)
-                            new['age'] = self.ageToDays(str(age))
-                            new['seeders'] = tryInt(seeder)
-                            new['leechers'] = tryInt(leecher)
+                            new['name'] = title.strip()
+                            new['url'] = download_url
+                            new['detail_url'] = download_url
+                            new['size'] = size
+                            new['age'] = 1
+                            new['seeders'] = seeders
+                            new['leechers'] = tleechers
                             new['extra_check'] = extra_check
                             new['download'] = self.loginDownload             
     
@@ -128,8 +110,8 @@ class torrent9(TorrentProvider, MovieProvider):
     
                             id = id+1
                         
-                    except:
-                        log.error('Failed parsing cPASbien: %s', traceback.format_exc())
+                    eexcept StandardError:
+                            continue
 
             except AttributeError:
                 log.debug('No search results found.')
