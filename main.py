@@ -51,7 +51,7 @@ class torrent9(TorrentProvider, MovieProvider):
 
         TitleStringReal = (getTitle(movie['info']) + ' ' + simplifyString(quality['identifier'] )).replace('-',' ').replace(' ',' ').replace(' ',' ').replace(' ',' ').encode("utf8")
         
-        URL = ((self.urls['search'])+TitleStringReal+'.html').encode('UTF8')
+        URL = ((self.urls['search'])+TitleStringReal.replace('.', '-').replace(' ', '-')+'.html,trie-seeds-d').encode('UTF8')
 
         req = urllib2.Request(URL)
         log.info('sending to %s', URL) 
@@ -65,50 +65,41 @@ class torrent9(TorrentProvider, MovieProvider):
                 html = BeautifulSoup(data)
                 torrent_rows = html.findAll('tr')
                 for result in torrent_rows:
-					try:
-						title = result.find('a').get_text(strip=False)
-						tmp = result.find("a")['href'].split('/')[-1].replace('.html', '.torrent').strip()
-						download_url = (self.url + '/get_torrent/{0}'.format(tmp) + ".torrent")
-						if not all([title, download_url]):
-							continue
+        		try:
+        			title = result.find('a').get_text(strip=False)
+				tmp = result.find("a")['href'].split('/')[-1].replace('.html', '.torrent').strip()
+				download_url = (self.url + '/get_torrent/{0}'.format(tmp) + ".torrent")
+				if not all([title, download_url]):
+        				continue
 
-						seeders = try_int(result.find(class_="seed_ok").get_text(strip=True))
-						leechers = try_int(result.find_all('td')[3].get_text(strip=True))
-						if seeders < self.minseed or leechers < self.minleech:
-							logger.log(u"Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(title, seeders, leechers), logger.DEBUG)
-							continue
+				seeders = try_int(result.find(class_="seed_ok").get_text(strip=True))
+        			leechers = try_int(result.find_all('td')[3].get_text(strip=True))
+				if seeders < self.minseed or leechers < self.minleech:
+        				logger.log(u"Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(title, seeders, leechers), logger.DEBUG)
+					continue
 
-						torrent_size = result.find_all('td')[1].get_text(strip=True)
+				torrent_size = result.find_all('td')[1].get_text(strip=True)
 
-						units = ['o', 'Ko', 'Mo', 'Go', 'To', 'Po']
-						size = convert_size(torrent_size, units=units) or -1
+				units = ['o', 'Ko', 'Mo', 'Go', 'To', 'Po']
+				size = convert_size(torrent_size, units=units) or -1
 					
-					def extra_check(item):
-						return True
+				new['id'] = id
+				new['name'] = title.strip()
+				new['url'] = download_url
+				new['detail_url'] = download_url
+				new['size'] = size
+				new['age'] = 1
+				new['seeders'] = seeders
+				new['leechers'] = tleechers
+				new['extra_check'] = extra_check
+				new['download'] = self.loginDownload             
 
-					new['id'] = id
-					new['name'] = title.strip()
-					new['url'] = download_url
-					new['detail_url'] = download_url
-					new['size'] = size
-					new['age'] = 1
-					new['seeders'] = seeders
-					new['leechers'] = tleechers
-					new['extra_check'] = extra_check
-					new['download'] = self.loginDownload             
+				results.append(new)
 
-					#new['score'] = fireEvent('score.calculate', new, movie, single = True)
-
-					#log.error('score')
-					#log.error(new['score'])
-
-					results.append(new)
-
-					id = id+1
+				id = id+1
 					
-				except StandardError:
-						continue
-
+			except StandardError:
+		       		continue
             except AttributeError:
                 log.debug('No search results found.')
         else:
