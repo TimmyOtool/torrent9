@@ -75,8 +75,7 @@ class torrent9(TorrentProvider, MovieProvider):
 						seeders = try_int(result.find(class_="seed_ok").get_text(strip=True))
 						leechers = try_int(result.find_all('td')[3].get_text(strip=True))
 						if seeders < self.minseed or leechers < self.minleech:
-								logger.log(u"Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format
-										   (title, seeders, leechers), logger.DEBUG)
+							logger.log(u"Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(title, seeders, leechers), logger.DEBUG)
 							continue
 
 						torrent_size = result.find_all('td')[1].get_text(strip=True)
