@@ -83,31 +83,28 @@ class torrent9(TorrentProvider, MovieProvider):
 						units = ['o', 'Ko', 'Mo', 'Go', 'To', 'Po']
 						size = convert_size(torrent_size, units=units) or -1
 					
-					add = 1
 					def extra_check(item):
 						return True
 
-					if add == 1:
+					new['id'] = id
+					new['name'] = title.strip()
+					new['url'] = download_url
+					new['detail_url'] = download_url
+					new['size'] = size
+					new['age'] = 1
+					new['seeders'] = seeders
+					new['leechers'] = tleechers
+					new['extra_check'] = extra_check
+					new['download'] = self.loginDownload             
 
-						new['id'] = id
-						new['name'] = title.strip()
-						new['url'] = download_url
-						new['detail_url'] = download_url
-						new['size'] = size
-						new['age'] = 1
-						new['seeders'] = seeders
-						new['leechers'] = tleechers
-						new['extra_check'] = extra_check
-						new['download'] = self.loginDownload             
+					#new['score'] = fireEvent('score.calculate', new, movie, single = True)
 
-						#new['score'] = fireEvent('score.calculate', new, movie, single = True)
+					#log.error('score')
+					#log.error(new['score'])
 
-						#log.error('score')
-						#log.error(new['score'])
+					results.append(new)
 
-						results.append(new)
-
-						id = id+1
+					id = id+1
 					
 				except StandardError:
 						continue
