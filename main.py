@@ -51,7 +51,7 @@ class torrent9(TorrentProvider, MovieProvider):
 
         TitleStringReal = (getTitle(movie['info']) + ' ' + simplifyString(quality['identifier'] )).replace('-',' ').replace(' ',' ').replace(' ',' ').replace(' ',' ').encode("utf8")
         
-        URL = ((self.urls['search'])+TitleStringReal).encode('UTF8')
+        URL = ((self.urls['search'])+TitleStringReal+'.html').encode('UTF8')
 
         req = urllib2.Request(URL)
         log.info('sending to %s', URL) 
@@ -157,7 +157,8 @@ class torrent9(TorrentProvider, MovieProvider):
         return tryInt(age)
 
     def login(self):
-
+		log.debug('Try to login on torrent9')
+		return True
         
     def loginDownload(self, url = '', nzb_id = ''):
         values = {
