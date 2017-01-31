@@ -23,30 +23,11 @@ log = CPLog(__name__)
 
 class torrent9(TorrentProvider, MovieProvider):
     urls = {
-        'test': 'http://www.torrent9.biz/',
+        'site': 'http://www.torrent9.biz/',
         'search': 'http://www.torrent9.biz/search_torrent/',
     }
 
-    http_time_between_calls = 2 #seconds
-    cat_backup_id = None
-
-    class NotLoggedInHTTPError(urllib2.HTTPError):
-        def __init__(self, url, code, msg, headers, fp):
-            urllib2.HTTPError.__init__(self, url, code, msg, headers, fp)
-
-    class PTPHTTPRedirectHandler(urllib2.HTTPRedirectHandler):
-        def http_error_302(self, req, fp, code, msg, headers):
-            log.debug("302 detected; redirected to %s" % headers['Location'])
-            if (headers['Location'] != 'login.php'):
-                return urllib2.HTTPRedirectHandler.http_error_302(self, req, fp, code, msg, headers)
-            else:
-                raise cpasbien.NotLoggedInHTTPError(req.get_full_url(), code, msg, headers, fp)
-
     def _search(self, movie, quality, results):
-
-                # Cookie login
-        if not self.last_login_check and not self.login():
-            return
 
 
         TitleStringReal = (getTitle(movie['info']) + ' ' + simplifyString(quality['identifier'] )).replace('-',' ').replace(' ',' ').replace(' ',' ').replace(' ',' ').encode("utf8")
@@ -54,108 +35,84 @@ class torrent9(TorrentProvider, MovieProvider):
         URL = ((self.urls['search'])+TitleStringReal.replace('.', '-').replace(' ', '-')+'.html,trie-seeds-d').encode('UTF8')
 
         req = urllib2.Request(URL)
-        log.info('sending to %s', URL) 
+        log.info('opening url %s', URL) 
         data = urllib2.urlopen(req,timeout=10)
        
         id = 1000
 
         if data:
-                       
             try:
                 html = BeautifulSoup(data)
                 torrent_rows = html.findAll('tr')
+                 
                 for result in torrent_rows:
         		try:
+                                if not result.find('a'):
+                                    continue
         			title = result.find('a').get_text(strip=False)
-				tmp = result.find("a")['href'].split('/')[-1].replace('.html', '.torrent').strip()
-				download_url = (self.url + '/get_torrent/{0}'.format(tmp) + ".torrent")
-				if not all([title, download_url]):
+                                log.info('found title %s',title)
+				testname=namer_check.correctName(title.lower(),movie)
+                                if testname==0:
+                                    log.info('%s not match %s',(title.lower(),movie['info']['titles']))
+                                    continue
+                                log.info('title %s match',title)
+                                tmp = result.find("a")['href'].split('/')[-1].replace('.html', '.torrent').strip()
+                                download_url = (self.urls['site'] + 'get_torrent/{0}'.format(tmp) + ".torrent")
+                                detail_url = (self.urls['site'] + 'torrent/{0}'.format(tmp))
+			        log.debug('download_url %s',download_url)	
+                                if not all([title, download_url]):
         				continue
+				seeders = int(result.find(class_="seed_ok").get_text(strip=True))
+                                leechers = int(result.find_all('td')[3].get_text(strip=True))
+                                #log.info('seeders %d',seeders)
+				#if seeders < self.minseed or leechers < self.minleech:
+        			#	logger.log(u"Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(title, seeders, leechers), logger.DEBUG)
+				#	continue
 
-				seeders = try_int(result.find(class_="seed_ok").get_text(strip=True))
-        			leechers = try_int(result.find_all('td')[3].get_text(strip=True))
-				if seeders < self.minseed or leechers < self.minleech:
-        				logger.log(u"Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(title, seeders, leechers), logger.DEBUG)
-					continue
-
-				torrent_size = result.find_all('td')[1].get_text(strip=True)
-
-				units = ['o', 'Ko', 'Mo', 'Go', 'To', 'Po']
-				size = convert_size(torrent_size, units=units) or -1
-					
+			        size = result.find_all('td')[1].get_text(strip=True)
+                                def extra_check(item):
+                                    return True
+                                size = size.lower()
+                                size = size.replace("go", "gb")
+                                size = size.replace("mo", "mb")
+                                size = size.replace("ko", "kb")
+                                size=size.replace(' ','')
+                                size=self.parseSize(str(size))
+			        new={}		
 				new['id'] = id
 				new['name'] = title.strip()
 				new['url'] = download_url
-				new['detail_url'] = download_url
+				new['detail_url'] = detail_url
 				new['size'] = size
-				new['age'] = 1
 				new['seeders'] = seeders
-				new['leechers'] = tleechers
-				new['extra_check'] = extra_check
-				new['download'] = self.loginDownload             
-
-				results.append(new)
-
+				new['leechers'] = leechers
+                                new['extra_check'] = extra_check
+				new['download'] = self.loginDownload  
+                                results.append(new)
+                                log.info(results)
 				id = id+1
 					
-			except StandardError:
-		       		continue
+			except StandardError, e:
+                            log.info('boum %s',e)
+		            continue
+                
             except AttributeError:
                 log.debug('No search results found.')
         else:
             log.debug('No search results found.')
 
-    def ageToDays(self, age_str):
-        age = 0
-        age_str = age_str.replace('&nbsp;', ' ')
-
-        regex = '(\d*.?\d+).(sec|heure|jour|semaine|mois|ans)+'
-        matches = re.findall(regex, age_str)
-        for match in matches:
-            nr, size = match
-            mult = 1
-            if size == 'semaine':
-                mult = 7
-            elif size == 'mois':
-                mult = 30.5
-            elif size == 'ans':
-                mult = 365
-
-            age += tryInt(nr) * mult
-
-        return tryInt(age)
-
     def login(self):
-	log.debug('Try to login on torrent9')
+	log.info('Try to login on torrent9')
 	return True
         
-    def loginDownload(self, url = '', nzb_id = ''):
-        values = {
-          'url' : '/'
-        }
-        data_tmp = urllib.urlencode(values)
-        req = urllib2.Request(url, data_tmp, headers={'User-Agent' : "Mozilla/5.0"} )
-        
-        try:
-            if not self.last_login_check and not self.login():
-                log.error('Failed downloading from %s', self.getName())
-            return urllib2.urlopen(req).read()
-        except:
-            log.error('Failed downloading from %s: %s', (self.getName(), traceback.format_exc()))
-            
     def download(self, url = '', nzb_id = ''):
+        log.debug('download %s',url) 
         
-        if not self.last_login_check and not self.login():
-            return
-        
-        values = {
-          'url' : '/'
-        }
-        data_tmp = urllib.urlencode(values)
-        req = urllib2.Request(url, data_tmp, headers={'User-Agent' : "Mozilla/5.0"} )
+        req = urllib2.Request(url)
         
         try:
             return urllib2.urlopen(req).read()
         except:
             log.error('Failed downloading from %s: %s', (self.getName(), traceback.format_exc()))
-			
+
+    loginDownload = download
