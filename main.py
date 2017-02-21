@@ -11,7 +11,7 @@ import urllib
 import urllib2
 import unicodedata
 from couchpotato.core.helpers import namer_check
-
+import cfscrape as cfscrape
 
 import sys
 
@@ -27,16 +27,33 @@ class torrent9(TorrentProvider, MovieProvider):
         'search': 'http://www.torrent9.biz/search_torrent/',
     }
 
-    def _search(self, movie, quality, results):
+    class NotLoggedInHTTPError(urllib2.HTTPError):
+        def __init__(self, url, code, msg, headers, fp):
+            urllib2.HTTPError.__init__(self, url, code, msg, headers, fp)
 
+    class PTPHTTPRedirectHandler(urllib2.HTTPRedirectHandler):
+        def http_error_302(self, req, fp, code, msg, headers):
+            log.debug("302 detected; redirected to %s" % headers['Location'])
+            if (headers['Location'] != 'login.php'):
+                return urllib2.HTTPRedirectHandler.http_error_302(self, req, fp, code, msg, headers)
+            else:
+                raise torrent9.NotLoggedInHTTPError(req.get_full_url(), code, msg, headers, fp)
+
+    
+
+
+    def _search(self, movie, quality, results):
+        if not self.last_login_check and not self.login():
+            return
         TitleStringReal = (getTitle(movie['info']) + ' ' + simplifyString(quality['identifier'] )).replace('-',' ').replace(' ',' ').replace(' ',' ').replace(' ',' ').encode("utf8")
         
         URL = ((self.urls['search'])+TitleStringReal.replace('.', '-').replace(' ', '-')+'.html,trie-seeds-d').encode('UTF8')
-
-        req = urllib2.Request(URL)
+        #req = urllib2.Request(URL)
         log.info('opening url %s', URL) 
-        data = urllib2.urlopen(req,timeout=10)
-       
+        #data = urllib2.urlopen(req,timeout=10)
+        scraper = cfscrape.create_scraper() 
+        data=scraper.get(URL).content 
+        #log.info('content %s',data) 
         id = 1000
 
         if data:
@@ -102,10 +119,11 @@ class torrent9(TorrentProvider, MovieProvider):
             log.debug('No search results found.')
 
     def login(self):
-	log.info('Try to login on torrent9')
-	return True
-        
+        return True
+
     def download(self, url = '', nzb_id = ''):
+        if not self.last_login_check and not self.login():
+            return
         log.debug('download %s',url) 
         req = urllib2.Request(url)
         try:
