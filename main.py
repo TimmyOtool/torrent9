@@ -125,8 +125,12 @@ class torrent9(TorrentProvider, MovieProvider):
         if not self.last_login_check and not self.login():
             return
         log.debug('download %s',url) 
-        req = urllib2.Request(url)
+        scraper = cfscrape.create_scraper()
+        tokens, user_agent = cfscrape.get_cookie_string(url)
+        r_headers={"User-Agent":user_agent,"Cookie":tokens} 
+        req = urllib2.Request(url,headers=r_headers)
         try:
+            #return scraper.get(url).content()
             return urllib2.urlopen(req).read()
         except:
             log.error('Failed downloading from %s: %s', (self.getName(), traceback.format_exc()))
