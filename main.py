@@ -47,7 +47,7 @@ class torrent9(TorrentProvider, MovieProvider):
             return
         TitleStringReal = (getTitle(movie['info']) + ' ' + simplifyString(quality['identifier'] )).replace('-',' ').replace(' ',' ').replace(' ',' ').replace(' ',' ').encode("utf8")
         
-        URL = ((self.urls['search'])+TitleStringReal.replace('.', '-').replace(' ', '-')+'.html,trie-seeds-d').encode('UTF8')
+        URL = ((self.urls['search'])+TitleStringReal.replace('.', '-').replace(' ', '-')+'.html').encode('UTF8')
         #req = urllib2.Request(URL)
         log.info('opening url %s', URL) 
         #data = urllib2.urlopen(req,timeout=10)
