@@ -23,8 +23,8 @@ log = CPLog(__name__)
 
 class torrent9(TorrentProvider, MovieProvider):
     urls = {
-        'site': 'http://www.torrent9.pe/',
-        'search': 'http://www.torrent9.pe/search_torrent/',
+        'site': 'http://www.torrent9.bz/',
+        'search': 'http://www.torrent9.bz/search_torrent/',
     }
 
     class NotLoggedInHTTPError(urllib2.HTTPError):
@@ -122,6 +122,7 @@ class torrent9(TorrentProvider, MovieProvider):
         return True
 
     def download(self, url = '', nzb_id = ''):
+        log.debug('entering dowload')
         if not self.last_login_check and not self.login():
             return
         log.debug('download %s',url) 
