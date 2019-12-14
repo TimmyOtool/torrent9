@@ -23,8 +23,8 @@ log = CPLog(__name__)
 
 class torrent9(TorrentProvider, MovieProvider):
     urls = {
-        'site': 'http://www.torrent9.bz/',
-        'search': 'http://www.torrent9.bz/search_torrent/',
+        'site': 'http://ww1.torrent9.is/',
+        'search': 'http://ww1.torrent9.is/search_torrent/',
     }
 
     class NotLoggedInHTTPError(urllib2.HTTPError):
